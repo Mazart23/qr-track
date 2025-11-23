@@ -41,7 +41,7 @@ export default function ReportDetailsScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]} contentContainerStyle={styles.contentContainer}>
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('machine')}</Text>
         <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{device_name}</Text>
@@ -58,7 +58,7 @@ export default function ReportDetailsScreen() {
             numberOfLines={4}
           />
         ) : (
-          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{editedDescription}</Text>
+          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{editedDescription || '-'}</Text>
         )}
       </View>
       
@@ -101,6 +101,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 20,
+  },
+  contentContainer: {
+    paddingBottom: 50,
   },
   section: {
     marginBottom: 20,

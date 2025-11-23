@@ -1,0 +1,31 @@
+{
+  "staging": [
+    {
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    {
+      "name": "Jane Smith",
+      "email": "jane@example.com"
+    }
+  ],
+  "production": [
+    {
+      "name": "Production User 1",
+      "email": "user1@example.com"
+    },
+    {
+      "name": "Production User 2",
+      "email": "user2@example.com"
+    }
+  ],
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "secure": false,
+    "auth": {
+      "user": "your-email@gmail.com",
+      "pass": "your-app-password"
+    }
+  }
+}

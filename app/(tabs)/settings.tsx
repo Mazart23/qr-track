@@ -53,8 +53,8 @@ export default function SettingsScreen() {
 
       <Modal visible={showIntervalPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{t('reportInterval')}</Text>
+          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].card }]}>
+            <Text style={[styles.modalTitle, { color: Colors[colorScheme].text, borderBottomColor: Colors[colorScheme].border }]}>{t('reportInterval')}</Text>
             <ScrollView style={styles.pickerScroll}>
               {[1, 7, 14, 30, 60, 90, 120, 180, 365].map((days) => {
                 const getLabel = () => {
@@ -65,21 +65,21 @@ export default function SettingsScreen() {
                 return (
                   <TouchableOpacity
                     key={days}
-                    style={[styles.pickerItem, days === reportInterval && { backgroundColor: Colors[colorScheme].tint }]}
+                    style={[styles.pickerItem, { borderBottomColor: Colors[colorScheme].border }, days === reportInterval && { backgroundColor: Colors[colorScheme].tint }]}
                     onPress={() => {
                       handleIntervalChange(days);
                       setShowIntervalPicker(false);
                     }}
                   >
-                    <Text style={[styles.pickerItemText, days === reportInterval && { color: '#fff', fontWeight: '700' }]}>
+                    <Text style={[styles.pickerItemText, { color: Colors[colorScheme].icon }, days === reportInterval && { color: '#fff', fontWeight: '700' }]}>
                       {getLabel()}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowIntervalPicker(false)}>
-              <Text style={styles.modalCloseText}>{t('cancel')}</Text>
+            <TouchableOpacity style={[styles.modalCloseButton, { borderTopColor: Colors[colorScheme].border }]} onPress={() => setShowIntervalPicker(false)}>
+              <Text style={[styles.modalCloseText, { color: Colors[colorScheme].tint }]}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -208,7 +208,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -219,7 +218,6 @@ const styles = StyleSheet.create({
     padding: 20,
     textAlign: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#dee2e6',
   },
   pickerScroll: {
     maxHeight: 400,
@@ -227,22 +225,18 @@ const styles = StyleSheet.create({
   pickerItem: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f3f5',
   },
   pickerItemText: {
     fontSize: 18,
     textAlign: 'center',
-    color: '#212529',
   },
   modalCloseButton: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#dee2e6',
   },
   modalCloseText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4338ca',
     textAlign: 'center',
   },
 });

@@ -10,7 +10,7 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType>({ theme: 'light', setTheme: () => {} });
 
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
+export const ThemeProvider = ({ children }: { children: React.ReactNode | ((value: ThemeContextType) => React.ReactNode) }) => {
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
@@ -27,7 +27,13 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     setThemeState(newTheme);
   };
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  const value = { theme, setTheme };
+
+  return (
+    <ThemeContext.Provider value={value}>
+      {typeof children === 'function' ? children(value) : children}
+    </ThemeContext.Provider>
+  );
 };
 
 export const useTheme = () => useContext(ThemeContext);

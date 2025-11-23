@@ -36,7 +36,7 @@ export default function QRsScreen() {
       codes.push(uniqueId);
     }
     setQrCodes(codes);
-    await generatePDF(codes, qrSize);
+    await generateFile(codes, qrSize);
   };
 
   /**
@@ -52,7 +52,7 @@ export default function QRsScreen() {
   /**
    * Generate HTML file with QR codes
    */
-  const generatePDF = async (codes: string[], qrSizeMM: number) => {
+  const generateFile = async (codes: string[], qrSizeMM: number) => {
     try {
       let htmlContent = `<!DOCTYPE html>
 <html>
@@ -106,40 +106,40 @@ export default function QRsScreen() {
         }
       }
       
-      Alert.alert(t('success'), t('pdfGeneratedSuccessfully'));
+      Alert.alert(t('success'), t('fileGeneratedSuccessfully'));
     } catch (error: any) {
       console.error('File generation error:', error);
-      Alert.alert(t('error'), error?.message || t('failedToGeneratePDF'));
+      Alert.alert(t('error'), error?.message || t('failedToGenerateFile'));
     }
   };
 
-  const countOptions = [1, 2, 3, 4, 5, 10, 20, 30, 40, 50];
+  const countOptions = [1, 5, 10, 20, 50, 100, 200, 500];
   const sizeOptions = [20, 30, 40, 50, 60, 70, 80, 90, 100];
 
   const renderPicker = (visible: boolean, onClose: () => void, options: number[], onSelect: (val: string) => void, title: string, currentValue: string) => (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{title}</Text>
+        <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].card }]}>
+          <Text style={[styles.modalTitle, { color: Colors[colorScheme].text, borderBottomColor: Colors[colorScheme].border }]}>{title}</Text>
           <ScrollView style={styles.pickerScroll}>
             {options.map((opt) => {
               const isSelected = opt.toString() === currentValue;
               return (
                 <TouchableOpacity
                   key={opt}
-                  style={[styles.pickerItem, isSelected && { backgroundColor: Colors[colorScheme].tint }]}
+                  style={[styles.pickerItem, { borderBottomColor: Colors[colorScheme].border }, isSelected && { backgroundColor: Colors[colorScheme].tint }]}
                   onPress={() => {
                     onSelect(opt.toString());
                     onClose();
                   }}
                 >
-                  <Text style={[styles.pickerItemText, isSelected && { color: '#fff', fontWeight: '700' }]}>{opt}</Text>
+                  <Text style={[styles.pickerItemText, { color: Colors[colorScheme].icon }, isSelected && { color: '#fff', fontWeight: '700' }]}>{opt}</Text>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-            <Text style={styles.modalCloseText}>{t('cancel')}</Text>
+          <TouchableOpacity style={[styles.modalCloseButton, { borderTopColor: Colors[colorScheme].border }]} onPress={onClose}>
+            <Text style={[styles.modalCloseText, { color: Colors[colorScheme].tint }]}>{t('cancel')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -185,7 +185,7 @@ export default function QRsScreen() {
       {renderPicker(showCountPicker, () => setShowCountPicker(false), countOptions, setCount, t('count'), count)}
       {renderPicker(showSizePicker, () => setShowSizePicker(false), sizeOptions, setSize, t('size'), size)}
       <TouchableOpacity style={[styles.button, { backgroundColor: Colors[colorScheme].tint }]} onPress={generateQRs}>
-        <Text style={styles.buttonText}>{t('generatePDF')}</Text>
+        <Text style={styles.buttonText}>{t('generate')}</Text>
       </TouchableOpacity>
 
       <ScrollView style={styles.qrContainer}>
@@ -238,7 +238,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -249,7 +248,6 @@ const styles = StyleSheet.create({
     padding: 20,
     textAlign: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#dee2e6',
   },
   pickerScroll: {
     maxHeight: 400,
@@ -257,22 +255,18 @@ const styles = StyleSheet.create({
   pickerItem: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f3f5',
   },
   pickerItemText: {
     fontSize: 18,
     textAlign: 'center',
-    color: '#212529',
   },
   modalCloseButton: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#dee2e6',
   },
   modalCloseText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4338ca',
     textAlign: 'center',
   },
   button: {

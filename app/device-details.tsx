@@ -1,25 +1,90 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Animated } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Animated } from 'react-native';
 import AnimatedStatusIcon from '@/components/animated-status-icon';
-import { getLastReport, updateDevice, deleteDevice, getDeviceReportsCount, checkDeviceNameExists } from '@/lib/database';
+import { getLastReport, updateDevice, deleteDevice, getDeviceReportsCount, checkDeviceNameExists, checkSerialNumberExists, updateDeviceQRCode, getDeviceById } from '@/lib/database';
+import { useMachineTypes } from '@/contexts/machine-types-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { getReportInterval } from '@/lib/settings';
+
+function NoQRIcon() {
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const rotate = Animated.loop(
+      Animated.sequence([
+        Animated.timing(rotateAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+        Animated.timing(rotateAnim, { toValue: -1, duration: 100, useNativeDriver: true }),
+        Animated.timing(rotateAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+        Animated.timing(rotateAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        Animated.delay(700),
+      ])
+    );
+    rotate.start();
+    return () => rotate.stop();
+  }, [rotateAnim]);
+
+  const rotation = rotateAnim.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-15deg', '15deg'],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+      <MaterialIcons name="qr-code" size={40} color="#ef4444" />
+    </Animated.View>
+  );
+}
 
 export default function DeviceDetailsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const { machineTypes, getMachineTypeById } = useMachineTypes();
   const params = useLocalSearchParams();
-  const { id, name, qr_code, created_at, updated_at, latitude, longitude } = params;
+  const { id } = params;
+  const [device, setDevice] = useState<any>({
+    name: params.name || '',
+    qr_code: params.qr_code || '',
+    serial_number: params.serial_number || '',
+    machine_type_id: params.machine_type_id || 0,
+    created_at: params.created_at || '',
+    updated_at: params.updated_at || '',
+    latitude: params.latitude,
+    longitude: params.longitude,
+  });
   const [lastReportDate, setLastReportDate] = useState<string | null>(null);
   const [reportStatus, setReportStatus] = useState<'none' | 'today' | 'overdue' | 'no-report'>('none');
   const [isEditing, setIsEditing] = useState(false);
-  const [editedName, setEditedName] = useState(name as string);
+  const [editedName, setEditedName] = useState(String(params.name || ''));
+  const [editedSerialNumber, setEditedSerialNumber] = useState(String(params.serial_number || ''));
+  const [editedMachineTypeId, setEditedMachineTypeId] = useState(Number(params.machine_type_id) || 0);
+  const [machineTypeName, setMachineTypeName] = useState('');
+  const [showTypePicker, setShowTypePicker] = useState(false);
 
+  useEffect(() => {
+    if (device.machine_type_id) {
+      const type = getMachineTypeById(Number(device.machine_type_id));
+      setMachineTypeName(type?.name || '');
+    }
+  }, [device.machine_type_id, getMachineTypeById]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadDeviceData = async () => {
+        const deviceData = await getDeviceById(Number(id));
+        if (deviceData) {
+          setDevice(deviceData);
+        }
+      };
+      loadDeviceData();
+    }, [id])
+  );
 
   useEffect(() => {
     const loadLastReport = async () => {
@@ -48,23 +113,42 @@ export default function DeviceDetailsScreen() {
     loadLastReport();
   }, [id]);
 
-
-
   const handleSave = async () => {
-    if (!editedName.trim()) {
+    if (editedName && !editedName.trim()) {
       Alert.alert(t('error'), t('enterDeviceName'));
       return;
     }
 
-    if (editedName.trim().toLowerCase() !== (name as string).trim().toLowerCase()) {
-      const nameExists = await checkDeviceNameExists(editedName.trim());
+    if (editedName && device.name && editedName.trim().toLowerCase() !== device.name.trim().toLowerCase()) {
+      const nameExists = await checkDeviceNameExists(editedName.trim(), Number(id));
       if (nameExists) {
         Alert.alert(t('error'), t('deviceNameExists'));
         return;
       }
     }
 
-    await updateDevice(Number(id), editedName);
+    if (editedSerialNumber && device.serial_number && editedSerialNumber.trim().toLowerCase() !== device.serial_number.trim().toLowerCase()) {
+      const serialExists = await checkSerialNumberExists(editedSerialNumber.trim(), Number(id));
+      if (serialExists) {
+        Alert.alert(t('error'), t('serialNumberExists'));
+        return;
+      }
+    }
+
+    await updateDevice(Number(id), editedName?.trim() || device.name, editedMachineTypeId || device.machine_type_id, editedSerialNumber?.trim() || device.serial_number);
+    
+    const updatedDevice = {
+      ...device,
+      name: editedName?.trim() || device.name,
+      serial_number: editedSerialNumber?.trim() || device.serial_number,
+      machine_type_id: editedMachineTypeId || device.machine_type_id,
+      updated_at: new Date().toISOString(),
+    };
+    setDevice(updatedDevice);
+    
+    const type = getMachineTypeById(editedMachineTypeId || device.machine_type_id);
+    setMachineTypeName(type?.name || '');
+    
     Alert.alert(t('success'), t('deviceUpdated'));
     setIsEditing(false);
   };
@@ -89,8 +173,25 @@ export default function DeviceDetailsScreen() {
     ]);
   };
 
+  const handleRemoveQR = async () => {
+    Alert.alert(t('confirmDelete'), t('confirmRemoveQRCode'), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('delete'),
+        style: 'destructive',
+        onPress: async () => {
+          await updateDeviceQRCode(Number(id), null);
+          setDevice({ ...device, qr_code: '' });
+          Alert.alert(t('success'), t('qrCodeRemoved'));
+        },
+      },
+    ]);
+  };
+
+  const hasQR = device.qr_code && device.qr_code.trim() !== '';
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]} contentContainerStyle={styles.contentContainer}>
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('deviceName')}</Text>
         {isEditing ? (
@@ -100,27 +201,90 @@ export default function DeviceDetailsScreen() {
             onChangeText={setEditedName}
           />
         ) : (
-          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{editedName}</Text>
+          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{device.name || '-'}</Text>
+        )}
+      </View>
+      
+      <View style={styles.sectionWrapper}>
+        <View style={[styles.sectionWithGradient, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+          <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('qrCode')}</Text>
+          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{device.qr_code || t('noQRCode')}</Text>
+          {isEditing && (
+            <View style={styles.qrButtonRow}>
+              <TouchableOpacity 
+                style={[styles.smallButton, { backgroundColor: Colors[colorScheme].tint }]} 
+                onPress={() => router.push({ pathname: '/scan-qr-edit', params: { deviceId: id } })}
+              >
+                <Text style={styles.smallButtonText}>{hasQR ? t('change') : t('add')}</Text>
+              </TouchableOpacity>
+              {hasQR && (
+                <TouchableOpacity 
+                  style={[styles.smallButton, styles.deleteButton]} 
+                  onPress={handleRemoveQR}
+                >
+                  <Text style={styles.smallButtonText}>{t('removeQRCode')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          {!hasQR && (
+            <View style={styles.iconWrapper}>
+              <NoQRIcon />
+            </View>
+          )}
+        </View>
+        {!hasQR && (
+          <LinearGradient
+            colors={['transparent', 'rgba(239, 68, 68, 0.15)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            locations={[0.3, 1]}
+            style={styles.gradient}
+          />
         )}
       </View>
       
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-        <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('qrCode')}</Text>
-        <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{qr_code}</Text>
+        <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('serialNumber')}</Text>
+        {isEditing ? (
+          <TextInput
+            style={[styles.input, { backgroundColor: Colors[colorScheme].background, borderColor: Colors[colorScheme].border, color: Colors[colorScheme].text }]}
+            value={editedSerialNumber}
+            onChangeText={setEditedSerialNumber}
+          />
+        ) : (
+          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{device.serial_number || '-'}</Text>
+        )}
+      </View>
+      
+      <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+        <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('machineType')}</Text>
+        {isEditing ? (
+          <TouchableOpacity
+            style={[styles.input, { backgroundColor: Colors[colorScheme].background, borderColor: Colors[colorScheme].border }]}
+            onPress={() => setShowTypePicker(true)}
+          >
+            <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
+              {machineTypes.find(t => t.id === editedMachineTypeId)?.name || t('selectMachineType')}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{machineTypeName || '-'}</Text>
+        )}
       </View>
       
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('createdAt')}</Text>
         <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-          {new Date(created_at as string).toLocaleString()}
+          {device.created_at ? new Date(device.created_at).toLocaleString() : '-'}
         </Text>
       </View>
       
-      {updated_at && updated_at !== created_at && (
+      {device.updated_at && device.updated_at !== device.created_at && (
         <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
           <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('updatedAt')}</Text>
           <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-            {new Date(updated_at as string).toLocaleString()}
+            {new Date(device.updated_at).toLocaleString()}
           </Text>
         </View>
       )}
@@ -139,25 +303,28 @@ export default function DeviceDetailsScreen() {
         </View>
         {reportStatus === 'today' && (
           <LinearGradient
-            colors={['rgba(34, 197, 94, 0.15)', 'transparent']}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 0 }}
+            colors={['transparent', 'rgba(34, 197, 94, 0.15)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            locations={[0.3, 1]}
             style={styles.gradient}
           />
         )}
         {reportStatus === 'overdue' && (
           <LinearGradient
-            colors={['rgba(249, 115, 22, 0.15)', 'transparent']}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 0 }}
+            colors={['transparent', 'rgba(249, 115, 22, 0.15)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            locations={[0.3, 1]}
             style={styles.gradient}
           />
         )}
         {reportStatus === 'no-report' && (
           <LinearGradient
-            colors={['rgba(234, 179, 8, 0.15)', 'transparent']}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 0 }}
+            colors={['transparent', 'rgba(234, 179, 8, 0.15)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            locations={[0.3, 1]}
             style={styles.gradient}
           />
         )}
@@ -166,7 +333,7 @@ export default function DeviceDetailsScreen() {
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('location')}</Text>
         <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-          {latitude && longitude ? `${latitude}, ${longitude}` : t('noLocation')}
+          {device.latitude && device.longitude ? `${device.latitude}, ${device.longitude}` : t('noLocation')}
         </Text>
       </View>
 
@@ -184,6 +351,33 @@ export default function DeviceDetailsScreen() {
           <Text style={styles.buttonText}>{t('delete')}</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={showTypePicker} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].card }]}>
+            <Text style={[styles.modalTitle, { color: Colors[colorScheme].text, borderBottomColor: Colors[colorScheme].border }]}>{t('selectMachineType')}</Text>
+            <ScrollView style={styles.pickerScroll}>
+              {machineTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[styles.pickerItem, { borderBottomColor: Colors[colorScheme].border }, type.id === editedMachineTypeId && { backgroundColor: Colors[colorScheme].tint }]}
+                  onPress={() => {
+                    setEditedMachineTypeId(type.id);
+                    setShowTypePicker(false);
+                  }}
+                >
+                  <Text style={[styles.pickerItemText, { color: Colors[colorScheme].icon }, type.id === editedMachineTypeId && { color: '#fff', fontWeight: '700' }]}>
+                    {type.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={[styles.modalCloseButton, { borderTopColor: Colors[colorScheme].border }]} onPress={() => setShowTypePicker(false)}>
+              <Text style={[styles.modalCloseText, { color: Colors[colorScheme].tint }]}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -193,6 +387,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 20,
+  },
+  contentContainer: {
+    paddingBottom: 50,
   },
   sectionWrapper: {
     position: 'relative',
@@ -269,5 +466,59 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  qrButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  smallButton: {
+    flex: 1,
+    maxWidth: '50%',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  smallButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    padding: 20,
+    textAlign: 'center',
+    borderBottomWidth: 1,
+  },
+  pickerScroll: {
+    maxHeight: 400,
+  },
+  pickerItem: {
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  pickerItemText: {
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  modalCloseButton: {
+    padding: 20,
+    borderTopWidth: 1,
+  },
+  modalCloseText: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

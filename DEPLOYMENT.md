@@ -92,11 +92,22 @@ eas build --platform android --profile preview
 
 ## Updating the App
 
+### Data Preservation
+✅ **User data is automatically preserved** when updating!
+- AsyncStorage data persists across updates
+- Package name stays the same: `com.qrtrack.app`
+- Users can install new version directly over old version
+
+### Update Steps
+
 1. Update version in `app.json`:
    ```json
    "version": "1.0.1",
    "android": {
-     "versionCode": 2
+     "versionCode": 2  // Must increment
+   },
+   "ios": {
+     "buildNumber": "1.0.1"
    }
    ```
 
@@ -106,6 +117,11 @@ eas build --platform android --profile preview
    ```
 
 3. Distribute new APK to users
+   - Users install directly over existing app
+   - All machines and reports are preserved
+   - No data loss!
+
+See UPDATE_GUIDE.md for detailed information.
 
 ## iOS Build (Optional)
 

@@ -4,9 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import 'react-native-reanimated';
-import "./globals.css"
 
 import { ThemeProvider } from '@/contexts/theme-context';
+import { MachineTypesProvider } from '@/contexts/machine-types-context';
 import { initDatabase } from '@/lib/database';
 import { loadLanguage } from '@/lib/i18n';
 import '@/lib/i18n';
@@ -37,15 +37,24 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <NavigationThemeProvider value={DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Scan QR' }} />
-          <Stack.Screen name="device-details" options={{ title: 'Machine Details' }} />
-          <Stack.Screen name="report-details" options={{ title: 'Report Details' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </NavigationThemeProvider>
+      {({ theme }) => (
+        <MachineTypesProvider>
+          <NavigationThemeProvider value={theme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ 
+              animation: 'slide_from_right',
+              detachPreviousScreen: false
+            }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Scan QR' }} />
+              <Stack.Screen name="device-details" options={{ title: 'Machine Details' }} />
+              <Stack.Screen name="report-details" options={{ title: 'Report Details' }} />
+              <Stack.Screen name="machine-types" options={{ title: 'Machine Types' }} />
+              <Stack.Screen name="scan-qr-edit" options={{ presentation: 'modal', title: 'Scan QR Code' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </NavigationThemeProvider>
+        </MachineTypesProvider>
+      )}
     </ThemeProvider>
   );
 }

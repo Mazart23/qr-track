@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
-import { checkQRExists, addDevice, addReport, checkDeviceNameExists } from '@/lib/database';
+import { checkQRExists, addDevice, addReport, checkDeviceNameExists, checkSerialNumberExists } from '@/lib/database';
+import { useMachineTypes } from '@/contexts/machine-types-context';
 
 export default function ScanScreen() {
   const { t } = useTranslation();
+  const { machineTypes } = useMachineTypes();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [qrData, setQrData] = useState('');
   const [isNewDevice, setIsNewDevice] = useState(false);
   const [deviceName, setDeviceName] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [machineTypeId, setMachineTypeId] = useState<number | null>(null);
+  const [showTypePicker, setShowTypePicker] = useState(false);
   const [reportDescription, setReportDescription] = useState('');
   const [deviceId, setDeviceId] = useState<number | null>(null);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -43,9 +48,6 @@ export default function ScanScreen() {
     );
   }
 
-  /**
-   * Handle QR code scan
-   */
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
@@ -60,24 +62,28 @@ export default function ScanScreen() {
     }
   };
 
-  /**
-   * Submit new device
-   */
   const handleDeviceSubmit = async () => {
-    if (!deviceName.trim()) {
-      Alert.alert(t('error'), t('enterDeviceName'));
-      return;
+    const trimmedName = deviceName?.trim() || '';
+    const trimmedSerial = serialNumber?.trim() || '';
+
+    if (trimmedName) {
+      const nameExists = await checkDeviceNameExists(trimmedName);
+      if (nameExists) {
+        Alert.alert(t('error'), t('deviceNameExists'));
+        return;
+      }
     }
 
-    const trimmedName = deviceName.trim();
-    const nameExists = await checkDeviceNameExists(trimmedName);
-    if (nameExists) {
-      Alert.alert(t('error'), t('deviceNameExists'));
-      return;
+    if (trimmedSerial) {
+      const serialExists = await checkSerialNumberExists(trimmedSerial);
+      if (serialExists) {
+        Alert.alert(t('error'), t('serialNumberExists'));
+        return;
+      }
     }
 
     try {
-      await addDevice(qrData, trimmedName, location?.latitude, location?.longitude);
+      await addDevice(qrData, trimmedName, machineTypeId || 0, trimmedSerial, location?.latitude, location?.longitude);
       Alert.alert(t('success'), t('deviceAddedSuccessfully'));
       router.back();
     } catch (error) {
@@ -85,9 +91,6 @@ export default function ScanScreen() {
     }
   };
 
-  /**
-   * Submit new report
-   */
   const handleReportSubmit = async () => {
     if (!reportDescription.trim()) {
       Alert.alert(t('error'), t('enterReportDescription'));
@@ -107,35 +110,79 @@ export default function ScanScreen() {
     return (
       <View style={styles.formContainer}>
         <Text style={styles.title}>{t('addNewDevice')}</Text>
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>{t('qrCode')}</Text>
-          <Text style={styles.qrValue}>{qrData}</Text>
-        </View>
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>{t('deviceName')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t('deviceName')}
-            value={deviceName}
-            onChangeText={setDeviceName}
-          />
-        </View>
-        <TouchableOpacity style={styles.button} onPress={handleDeviceSubmit}>
-          <Text style={styles.buttonText}>{t('addDevice')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
-          <Text style={styles.cancelText}>{t('cancel')}</Text>
-        </TouchableOpacity>
+        <ScrollView>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('qrCode')}</Text>
+            <Text style={styles.qrValue}>{qrData}</Text>
+          </View>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('deviceName')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={t('deviceName')}
+              value={deviceName}
+              onChangeText={setDeviceName}
+            />
+          </View>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('serialNumber')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={t('serialNumber')}
+              value={serialNumber}
+              onChangeText={setSerialNumber}
+            />
+          </View>
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>{t('machineType')}</Text>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowTypePicker(true)}
+            >
+              <Text style={{ color: machineTypeId ? '#212529' : '#999' }}>
+                {machineTypeId ? machineTypes.find(t => t.id === machineTypeId)?.name : t('selectMachineType')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.button} onPress={handleDeviceSubmit}>
+            <Text style={styles.buttonText}>{t('addDevice')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+            <Text style={styles.cancelText}>{t('cancel')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <Modal visible={showTypePicker} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{t('selectMachineType')}</Text>
+              <ScrollView style={styles.pickerScroll}>
+                {machineTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type.id}
+                    style={[styles.pickerItem, type.id === machineTypeId && { backgroundColor: '#4338ca' }]}
+                    onPress={() => {
+                      setMachineTypeId(type.id);
+                      setShowTypePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, type.id === machineTypeId && { color: '#fff', fontWeight: '700' }]}>
+                      {type.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowTypePicker(false)}>
+                <Text style={styles.modalCloseText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
 
   if (scanned && !isNewDevice) {
-    const getDeviceName = async () => {
-      const device = await checkQRExists(qrData);
-      return device;
-    };
-    
     return (
       <View style={styles.formContainer}>
         <Text style={styles.title}>{t('addReport')}</Text>
@@ -190,7 +237,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
   },
   title: {
     fontSize: 28,
@@ -268,5 +314,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     marginBottom: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    padding: 20,
+    textAlign: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#dee2e6',
+  },
+  pickerScroll: {
+    maxHeight: 400,
+  },
+  pickerItem: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f3f5',
+  },
+  pickerItemText: {
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#212529',
+  },
+  modalCloseButton: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#dee2e6',
+  },
+  modalCloseText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4338ca',
+    textAlign: 'center',
   },
 });

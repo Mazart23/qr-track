@@ -2,12 +2,19 @@
 
 ## Installation
 
-### Android
+### Android - First Time
 1. Download the `qr-track.apk` file
 2. Open the file on your Android device
 3. If prompted, enable "Install from Unknown Sources" in Settings
 4. Tap "Install"
 5. Grant Camera and Location permissions when asked
+
+### Android - Updating
+1. Download the new version APK file
+2. Open the file
+3. Tap "Update" or "Install"
+4. ✅ **Your data is automatically preserved!**
+5. All machines and reports remain intact
 
 ### iOS
 1. Install via TestFlight link (if provided)
@@ -59,7 +66,7 @@
 1. Go to "New QRs" tab
 2. Select count (how many codes)
 3. Select size (in millimeters)
-4. Tap "Generate PDF"
+4. Tap "Generate"
 5. HTML file will be saved - open and print as PDF
 
 ## Settings

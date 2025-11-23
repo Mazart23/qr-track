@@ -1,32 +1,46 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# Test binary, built with `go test -c`
-*.test
+# dependencies
+node_modules/
 
-# Code coverage profiles and other test artifacts
-*.out
-coverage.*
-*.coverprofile
-profile.cov
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
-# Go workspace file
-go.work
-go.work.sum
+# Metro
+.metro-health-check*
 
-# env file
-.env
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+# AI
+.amazonq/

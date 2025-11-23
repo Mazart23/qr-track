@@ -1,0 +1,185 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const LANGUAGE_KEY = '@language';
+
+const resources = {
+  en: {
+    translation: {
+      devices: 'Machines',
+      reports: 'Reports',
+      newQRs: 'New QRs',
+      settings: 'Settings',
+      generateQRCodes: 'Generate QR Codes',
+      scanQRCode: 'Scan QR Code',
+      noDevicesYet: 'No machines yet',
+      noReportsYet: 'No reports yet',
+      count: 'Count (1-50)',
+      size: 'Size (20-100) [mm]',
+      generatePDF: 'Generate PDF',
+      language: 'Language',
+      english: 'English',
+      polish: 'Polish',
+      theme: 'Theme',
+      lightMode: 'Light Mode',
+      darkMode: 'Dark Mode',
+      reportInterval: 'Report Interval',
+      day: 'day',
+      days: 'days',
+      interval30: '1 month (30 days)',
+      interval60: '2 months (60 days)',
+      interval90: '3 months (90 days)',
+      interval120: '4 months (120 days)',
+      interval180: '6 months (180 days)',
+      interval365: '1 year (365 days)',
+      edit: 'Edit',
+      delete: 'Delete',
+      save: 'Save',
+      confirmDelete: 'Confirm Delete',
+      confirmDeleteDevice: 'Are you sure you want to delete this machine?',
+      confirmDeleteDeviceWithReports_one: 'Are you sure you want to delete this machine? This will also delete {{count}} related report.',
+      confirmDeleteDeviceWithReports_other: 'Are you sure you want to delete this machine? This will also delete {{count}} related reports.',
+      confirmDeleteReport: 'Are you sure you want to delete this report?',
+      deviceDeleted: 'Machine deleted',
+      reportDeleted: 'Report deleted',
+      deviceUpdated: 'Machine updated',
+      reportUpdated: 'Report updated',
+      lastReport: 'Last Report',
+      noReportsYetForDevice: 'No reports yet',
+      location: 'Location',
+      noLocation: 'No location data',
+      addNewDevice: 'Add New Machine',
+      addReport: 'Add Report',
+      qrCode: 'QR Code',
+      deviceName: 'Machine Name',
+      addDevice: 'Add Machine',
+      createdAt: 'Created At',
+      updatedAt: 'Updated At',
+      machine: 'Machine',
+      cancel: 'Cancel',
+      reportDescription: 'Report Description',
+      submitReport: 'Submit Report',
+      close: 'Close',
+      cameraPermissionRequired: 'Camera permission required',
+      grantPermission: 'Grant Permission',
+      error: 'Error',
+      success: 'Success',
+      enterDeviceName: 'Please enter machine name',
+      deviceNameExists: 'Machine with this name already exists',
+      deviceAddedSuccessfully: 'Machine added successfully',
+      failedToAddDevice: 'Failed to add machine',
+      enterReportDescription: 'Please enter report description',
+      reportAddedSuccessfully: 'Report added successfully',
+      failedToAddReport: 'Failed to add report',
+      enterCountBetween: 'Enter count between 1-50',
+      enterSizeBetween: 'Enter size between 20-100 [mm]',
+      pdfNotSupportedOnWeb: 'PDF generation not supported on web. Use mobile app.',
+      pdfGeneratedSuccessfully: 'PDF generated successfully',
+      failedToGeneratePDF: 'Failed to generate PDF',
+    },
+  },
+  pl: {
+    translation: {
+      devices: 'Maszyny',
+      reports: 'Raporty',
+      newQRs: 'Nowe QR',
+      settings: 'Ustawienia',
+      generateQRCodes: 'Generuj kody QR',
+      scanQRCode: 'Skanuj kod QR',
+      noDevicesYet: 'Brak maszyn',
+      noReportsYet: 'Brak raportów',
+      count: 'Liczba (1-50)',
+      size: 'Rozmiar (20-100) [mm]',
+      generatePDF: 'Generuj PDF',
+      language: 'Język',
+      english: 'Angielski',
+      polish: 'Polski',
+      theme: 'Motyw',
+      lightMode: 'Jasny',
+      darkMode: 'Ciemny',
+      reportInterval: 'Interwał raportów',
+      day: 'dzień',
+      days: 'dni',
+      interval30: '1 miesiąc (30 dni)',
+      interval60: '2 miesiące (60 dni)',
+      interval90: '3 miesiące (90 dni)',
+      interval120: '4 miesiące (120 dni)',
+      interval180: 'pół roku (180 dni)',
+      interval365: '1 rok (365 dni)',
+      edit: 'Edytuj',
+      delete: 'Usuń',
+      save: 'Zapisz',
+      confirmDelete: 'Potwierdź usunięcie',
+      confirmDeleteDevice: 'Czy na pewno chcesz usunąć tę maszynę?',
+      confirmDeleteDeviceWithReports_one: 'Czy na pewno chcesz usunąć tę maszynę? Spowoduje to również usunięcie {{count}} powiązanego raportu.',
+      confirmDeleteDeviceWithReports_other: 'Czy na pewno chcesz usunąć tę maszynę? Spowoduje to również usunięcie {{count}} powiązanych raportów.',
+      confirmDeleteReport: 'Czy na pewno chcesz usunąć ten raport?',
+      deviceDeleted: 'Maszyna usunięta',
+      reportDeleted: 'Raport usunięty',
+      deviceUpdated: 'Maszyna zaktualizowana',
+      reportUpdated: 'Raport zaktualizowany',
+      lastReport: 'Ostatni raport',
+      noReportsYetForDevice: 'Brak raportów',
+      location: 'Lokalizacja',
+      noLocation: 'Brak danych lokalizacji',
+      addNewDevice: 'Dodaj nową maszynę',
+      addReport: 'Dodaj raport',
+      qrCode: 'Kod QR',
+      deviceName: 'Nazwa maszyny',
+      addDevice: 'Dodaj maszynę',
+      createdAt: 'Utworzono',
+      updatedAt: 'Zaktualizowano',
+      machine: 'Maszyna',
+      cancel: 'Anuluj',
+      reportDescription: 'Opis raportu',
+      submitReport: 'Wyślij raport',
+      close: 'Zamknij',
+      cameraPermissionRequired: 'Wymagane uprawnienie do kamery',
+      grantPermission: 'Przyznaj uprawnienie',
+      error: 'Błąd',
+      success: 'Sukces',
+      enterDeviceName: 'Proszę wprowadzić nazwę maszyny',
+      deviceNameExists: 'Maszyna o tej nazwie już istnieje',
+      deviceAddedSuccessfully: 'Maszyna dodana pomyślnie',
+      failedToAddDevice: 'Nie udało się dodać maszyny',
+      enterReportDescription: 'Proszę wprowadzić opis raportu',
+      reportAddedSuccessfully: 'Raport dodany pomyślnie',
+      failedToAddReport: 'Nie udało się dodać raportu',
+      enterCountBetween: 'Wprowadź liczbę między 1-50',
+      enterSizeBetween: 'Wprowadź rozmiar między 20-100 [mm]',
+      pdfNotSupportedOnWeb: 'Generowanie PDF nie jest obsługiwane w przeglądarce. Użyj aplikacji mobilnej.',
+      pdfGeneratedSuccessfully: 'PDF wygenerowany pomyślnie',
+      failedToGeneratePDF: 'Nie udało się wygenerować PDF',
+    },
+  },
+};
+
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'en',
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false,
+  },
+});
+
+/**
+ * Load saved language preference
+ */
+export const loadLanguage = async () => {
+  const savedLang = await AsyncStorage.getItem(LANGUAGE_KEY);
+  if (savedLang) {
+    i18n.changeLanguage(savedLang);
+  }
+};
+
+/**
+ * Save language preference
+ */
+export const saveLanguage = async (lang: string) => {
+  await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+  i18n.changeLanguage(lang);
+};
+
+export default i18n;

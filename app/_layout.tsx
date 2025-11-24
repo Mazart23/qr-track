@@ -2,8 +2,11 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Text, AppState } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
+import Constants from 'expo-constants';
 
 import { ThemeProvider } from '@/contexts/theme-context';
 import { MachineTypesProvider } from '@/contexts/machine-types-context';
@@ -17,20 +20,32 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const prepare = async () => {
       await initDatabase();
       await loadLanguage();
+      await NavigationBar.setVisibilityAsync('hidden');
       setIsReady(true);
     };
     prepare();
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        await NavigationBar.setVisibilityAsync('hidden');
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
         <Image source={require('@/assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.version}>v{Constants.expoConfig?.version}</Text>
       </View>
     );
   }
@@ -45,11 +60,11 @@ export default function RootLayout() {
               detachPreviousScreen: false
             }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Scan QR' }} />
-              <Stack.Screen name="device-details" options={{ title: 'Machine Details' }} />
-              <Stack.Screen name="report-details" options={{ title: 'Report Details' }} />
-              <Stack.Screen name="machine-types" options={{ title: 'Machine Types' }} />
-              <Stack.Screen name="scan-qr-edit" options={{ presentation: 'modal', title: 'Scan QR Code' }} />
+              <Stack.Screen name="scan" options={{ presentation: 'modal', title: t('scanQRCode') }} />
+              <Stack.Screen name="device-details" options={{ title: t('machineDetails') }} />
+              <Stack.Screen name="report-details" options={{ title: t('reportDetails') }} />
+              <Stack.Screen name="machine-types" options={{ title: t('machineTypes') }} />
+              <Stack.Screen name="scan-qr-edit" options={{ presentation: 'modal', title: t('scanQRCode') }} />
             </Stack>
             <StatusBar style="auto" />
           </NavigationThemeProvider>
@@ -69,5 +84,11 @@ const styles = StyleSheet.create({
   logo: {
     width: 200,
     height: 200,
+  },
+  version: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '600',
   },
 });

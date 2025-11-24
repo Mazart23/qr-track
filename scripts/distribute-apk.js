@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const nodemailer = require('nodemailer');
 const { execSync } = require('child_process');
 
@@ -33,7 +32,7 @@ console.log(`Found ${subscribers.length} subscribers for ${BRANCH}`);
 async function getLatestBuildUrl() {
   try {
     console.log('Fetching latest build info from EAS...');
-    const output = execSync(`eas build:list --platform android --profile ${BRANCH} --limit 1 --json`, {
+    const output = execSync(`eas build:list --platform android --buildProfile ${BRANCH} --limit 1 --json --non-interactive`, {
       encoding: 'utf8'
     });
     
@@ -58,76 +57,102 @@ async function getLatestBuildUrl() {
   }
 }
 
-// Download APK
-async function downloadApk(url, outputPath) {
-  return new Promise((resolve, reject) => {
-    console.log('Downloading APK...');
-    const file = fs.createWriteStream(outputPath);
-    
-    https.get(url, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        // Follow redirect
-        https.get(response.headers.location, (redirectResponse) => {
-          redirectResponse.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            console.log('✅ APK downloaded successfully');
-            resolve();
-          });
-        }).on('error', reject);
-      } else {
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          console.log('✅ APK downloaded successfully');
-          resolve();
-        });
-      }
-    }).on('error', (err) => {
-      fs.unlink(outputPath, () => {});
-      reject(err);
-    });
-  });
-}
 
-// Send email with APK attachment
-async function sendEmail(subscriber, apkPath, buildInfo) {
+
+// Email translations
+const translations = {
+  en: {
+    subject: `QR Track - New ${BRANCH} Build Available (v{{version}})`,
+    title: 'New QR Track Build Available',
+    greeting: 'Hi {{name}},',
+    intro: `A new build of QR Track is available for the <strong>${BRANCH}</strong> channel.`,
+    buildInfo: 'Build Information:',
+    version: 'Version:',
+    buildNumber: 'Build Number:',
+    channel: 'Channel:',
+    download: 'Download:',
+    downloadButton: 'Download APK (v{{version}})',
+    instructions: 'Installation Instructions:',
+    step1: 'Click the download button above or copy this link: <a href="{{url}}">{{url}}</a>',
+    step2: 'Download the APK file to your Android device',
+    step3: 'Enable "Install from unknown sources" in Android settings if needed',
+    step4: 'Open the downloaded APK file to install',
+    step5: 'The app will update to the new version',
+    note: '<strong>Note:</strong> The download link expires after 30 days.',
+    support: 'If you have any issues, please contact support.',
+    regards: 'Best regards,<br>QR Track Team'
+  },
+  pl: {
+    subject: `QR Track - Nowa wersja ${BRANCH} dostępna (v{{version}})`,
+    title: 'Nowa wersja QR Track dostępna',
+    greeting: 'Cześć {{name}},',
+    intro: `Nowa wersja QR Track jest dostępna dla kanału <strong>${BRANCH}</strong>.`,
+    buildInfo: 'Informacje o wersji:',
+    version: 'Wersja:',
+    buildNumber: 'Numer buildu:',
+    channel: 'Kanał:',
+    download: 'Pobierz:',
+    downloadButton: 'Pobierz APK (v{{version}})',
+    instructions: 'Instrukcja instalacji:',
+    step1: 'Kliknij przycisk powyżej lub skopiuj link: <a href="{{url}}">{{url}}</a>',
+    step2: 'Pobierz plik APK na urządzenie Android',
+    step3: 'Włącz "Instalacja z nieznanych źródeł" w ustawieniach Androida jeśli potrzeba',
+    step4: 'Otwórz pobrany plik APK aby zainstalować',
+    step5: 'Aplikacja zaktualizuje się do nowej wersji',
+    note: '<strong>Uwaga:</strong> Link do pobrania wygasa po 30 dniach.',
+    support: 'W razie problemów skontaktuj się z supportem.',
+    regards: 'Pozdrawiam,<br>Zespół QR Track'
+  }
+};
+
+// Send email with download link
+async function sendEmail(subscriber, buildInfo) {
   const transporter = nodemailer.createTransport(smtpConfig);
+  const lang = subscriber.language || 'en';
+  const t = translations[lang] || translations.en;
+  
+  const replace = (str, vars) => {
+    return str.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] || '');
+  };
   
   const mailOptions = {
     from: smtpConfig.auth.user,
     to: subscriber.email,
-    subject: `QR Track - New ${BRANCH} Build Available`,
+    subject: replace(t.subject, { version: buildInfo.version }),
     html: `
-      <h2>New QR Track Build Available</h2>
-      <p>Hi ${subscriber.name},</p>
-      <p>A new build of QR Track is available for the <strong>${BRANCH}</strong> channel.</p>
+      <h2>${t.title}</h2>
+      <p>${replace(t.greeting, { name: subscriber.name })}</p>
+      <p>${t.intro}</p>
       
-      <h3>Build Information:</h3>
+      <h3>${t.buildInfo}</h3>
       <ul>
-        <li><strong>Version:</strong> ${buildInfo.version}</li>
-        <li><strong>Build Number:</strong> ${buildInfo.buildNumber}</li>
-        <li><strong>Channel:</strong> ${BRANCH}</li>
+        <li><strong>${t.version}</strong> ${buildInfo.version}</li>
+        <li><strong>${t.buildNumber}</strong> ${buildInfo.buildNumber}</li>
+        <li><strong>${t.channel}</strong> ${BRANCH}</li>
       </ul>
       
-      <h3>Installation Instructions:</h3>
+      <h3>${t.download}</h3>
+      <p style="margin: 20px 0;">
+        <a href="${buildInfo.url}" style="display: inline-block; padding: 12px 24px; background-color: #4338ca; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+          ${replace(t.downloadButton, { version: buildInfo.version })}
+        </a>
+      </p>
+      
+      <h3>${t.instructions}</h3>
       <ol>
-        <li>Download the attached APK file</li>
-        <li>Enable "Install from unknown sources" in Android settings if needed</li>
-        <li>Open the APK file to install</li>
-        <li>The app will update to the new version</li>
+        <li>${replace(t.step1, { url: buildInfo.url })}</li>
+        <li>${t.step2}</li>
+        <li>${t.step3}</li>
+        <li>${t.step4}</li>
+        <li>${t.step5}</li>
       </ol>
       
-      <p>If you have any issues, please contact support.</p>
+      <p>${t.note}</p>
       
-      <p>Best regards,<br>QR Track Team</p>
-    `,
-    attachments: [
-      {
-        filename: `qr-track-${BRANCH}-${buildInfo.version}.apk`,
-        path: apkPath
-      }
-    ]
+      <p>${t.support}</p>
+      
+      <p>${t.regards}</p>
+    `
   };
   
   await transporter.sendMail(mailOptions);
@@ -139,25 +164,20 @@ async function distribute() {
     // Get latest build info
     const buildInfo = await getLatestBuildUrl();
     console.log(`Build version: ${buildInfo.version} (${buildInfo.buildNumber})`);
-    
-    // Download APK
-    const apkPath = path.join(__dirname, '..', 'temp-build.apk');
-    await downloadApk(buildInfo.url, apkPath);
+    console.log(`Download URL: ${buildInfo.url}`);
     
     // Send to all subscribers
-    console.log(`\nSending APK to ${subscribers.length} subscribers...`);
+    console.log(`\nSending download link to ${subscribers.length} subscribers...`);
     for (const subscriber of subscribers) {
       try {
         console.log(`Sending to ${subscriber.name} (${subscriber.email})...`);
-        await sendEmail(subscriber, apkPath, buildInfo);
+        await sendEmail(subscriber, buildInfo);
         console.log(`✅ Sent to ${subscriber.email}`);
       } catch (error) {
         console.error(`❌ Failed to send to ${subscriber.email}:`, error.message);
       }
     }
     
-    // Cleanup
-    fs.unlinkSync(apkPath);
     console.log('\n✅ Distribution completed!');
     
   } catch (error) {

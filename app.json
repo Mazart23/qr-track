@@ -2,7 +2,7 @@
   "expo": {
     "name": "QR Track",
     "slug": "qr-track",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "description": "QR code tracking application for machines and reports",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -11,16 +11,17 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.qrtrack.app",
-      "buildNumber": "1.0.2",
+      "buildNumber": "1.1.0",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to scan QR codes",
-        "NSLocationWhenInUseUsageDescription": "This app needs location access to record machine locations"
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to record machine locations",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select machine images"
       }
     },
     "android": {
       "package": "com.qrtrack.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/logo.png"
@@ -28,7 +29,9 @@
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

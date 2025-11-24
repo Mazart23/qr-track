@@ -1,10 +1,11 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Animated, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState, useRef, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NavigationBar from 'expo-navigation-bar';
 import { getDevices, getLastReport } from '@/lib/database';
 import { useMachineTypes } from '@/contexts/machine-types-context';
 import ScanButton from '@/components/scan-button';
@@ -91,6 +92,7 @@ export default function DevicesScreen() {
 
   useFocusEffect(() => {
     loadDevices();
+    NavigationBar.setVisibilityAsync('hidden');
   });
 
   return (
@@ -155,10 +157,15 @@ export default function DevicesScreen() {
             )}
             {item.machineType && item.machineType.color && item.machineType.icon && (
               <View style={[styles.typeIndicator, { backgroundColor: item.machineType.color, borderColor: getDarkerColor(item.machineType.color) }]}>
-                <MaterialIcons name={item.machineType.icon} size={24} color="#fff" />
+                <MaterialIcons name={item.machineType.icon} size={30} color="#fff" />
               </View>
             )}
-            <View style={[styles.textContainer, { marginLeft: item.machineType?.color && item.machineType?.icon ? '12%' : 20 }]}>
+            {item.image_thumbnail && (
+              <View style={styles.thumbnailContainer}>
+                <Image source={{ uri: item.image_thumbnail }} style={styles.thumbnailImage} resizeMode="cover" />
+              </View>
+            )}
+            <View style={[styles.textContainer, { marginLeft: item.image_thumbnail ? '28%' : (item.machineType?.color && item.machineType?.icon ? '15%' : 20) }]}>
               <Text style={[styles.itemName, { color: Colors[colorScheme].text }]}>{item.name}</Text>
               {item.serial_number && (
                 <Text style={[styles.serialNumber, { color: Colors[colorScheme].icon }]}>{item.serial_number}</Text>
@@ -218,7 +225,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   typeIndicator: {
-    width: '10%',
+    width: '12%',
     position: 'absolute',
     left: -1,
     top: -1,
@@ -230,6 +237,19 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderRightWidth: 2,
     zIndex: 1,
+  },
+  thumbnailContainer: {
+    position: 'absolute',
+    left: '11.8%',
+    top: -1,
+    bottom: -1,
+    aspectRatio: 0.5,
+    overflow: 'hidden',
+    zIndex: 1,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
   gradient: {
     position: 'absolute',

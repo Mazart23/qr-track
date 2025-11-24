@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Modal, ScrollView, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { checkQRExists, addDevice, addReport, checkDeviceNameExists, checkSerialNumberExists } from '@/lib/database';
 import { useMachineTypes } from '@/contexts/machine-types-context';
+import { pickAndProcessImage } from '@/lib/image-helper';
 
 export default function ScanScreen() {
   const { t } = useTranslation();
@@ -21,6 +23,8 @@ export default function ScanScreen() {
   const [reportDescription, setReportDescription] = useState('');
   const [deviceId, setDeviceId] = useState<number | null>(null);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [deviceImage, setDeviceImage] = useState<string | undefined>(undefined);
+  const [deviceImageThumbnail, setDeviceImageThumbnail] = useState<string | undefined>(undefined);
   const router = useRouter();
 
   useEffect(() => {
@@ -83,11 +87,23 @@ export default function ScanScreen() {
     }
 
     try {
-      await addDevice(qrData, trimmedName, machineTypeId || 0, trimmedSerial, location?.latitude, location?.longitude);
+      await addDevice(qrData, trimmedName, machineTypeId || 0, trimmedSerial, location?.latitude, location?.longitude, deviceImage, deviceImageThumbnail);
       Alert.alert(t('success'), t('deviceAddedSuccessfully'));
       router.back();
     } catch (error) {
       Alert.alert(t('error'), t('failedToAddDevice'));
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await pickAndProcessImage();
+      if (result) {
+        setDeviceImage(result.image);
+        setDeviceImageThumbnail(result.thumbnail);
+      }
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message || t('invalidImageAspectRatio'));
     }
   };
 
@@ -111,6 +127,19 @@ export default function ScanScreen() {
       <View style={styles.formContainer}>
         <Text style={styles.title}>{t('addNewDevice')}</Text>
         <ScrollView>
+          {deviceImage ? (
+            <View style={styles.imageContainer}>
+              <Image source={{ uri: deviceImage }} style={styles.deviceImage} resizeMode="contain" />
+              <TouchableOpacity style={styles.changeImageButton} onPress={handlePickImage}>
+                <Text style={styles.changeImageText}>{t('changeImage')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.addImageButton} onPress={handlePickImage}>
+              <MaterialIcons name="add-photo-alternate" size={48} color="#64748b" />
+              <Text style={styles.addImageText}>{t('addImage')}</Text>
+            </TouchableOpacity>
+          )}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('qrCode')}</Text>
             <Text style={styles.qrValue}>{qrData}</Text>
@@ -237,6 +266,44 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f8f9fa',
+  },
+  imageContainer: {
+    marginBottom: 24,
+  },
+  deviceImage: {
+    width: '100%',
+    height: undefined,
+    aspectRatio: 16 / 9,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+  },
+  changeImageButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#4338ca',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  changeImageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addImageButton: {
+    padding: 40,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  addImageText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#495057',
+    marginTop: 12,
   },
   title: {
     fontSize: 28,

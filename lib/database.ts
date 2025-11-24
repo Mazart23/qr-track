@@ -10,6 +10,8 @@ interface Device {
   updated_at: string;
   latitude?: number;
   longitude?: number;
+  image?: string;
+  image_thumbnail?: string;
 }
 
 interface MachineType {
@@ -100,7 +102,7 @@ export const checkSerialNumberExists = async (serialNumber: string, excludeId?: 
 /**
  * Add new device
  */
-export const addDevice = async (qrCode: string, name: string, machineTypeId: number, serialNumber: string, latitude?: number, longitude?: number) => {
+export const addDevice = async (qrCode: string, name: string, machineTypeId: number, serialNumber: string, latitude?: number, longitude?: number, image?: string, imageThumbnail?: string) => {
   const devicesStr = await AsyncStorage.getItem(DEVICES_KEY);
   const devices: Device[] = devicesStr ? JSON.parse(devicesStr) : [];
   
@@ -114,6 +116,8 @@ export const addDevice = async (qrCode: string, name: string, machineTypeId: num
     updated_at: new Date().toISOString(),
     latitude,
     longitude,
+    image,
+    image_thumbnail: imageThumbnail,
   };
   
   devices.push(newDevice);
@@ -199,7 +203,7 @@ export const getLastReport = async (deviceId: number) => {
 /**
  * Update device
  */
-export const updateDevice = async (id: number, name: string, machineTypeId: number, serialNumber: string) => {
+export const updateDevice = async (id: number, name: string, machineTypeId: number, serialNumber: string, image?: string, imageThumbnail?: string) => {
   const devicesStr = await AsyncStorage.getItem(DEVICES_KEY);
   const devices: Device[] = devicesStr ? JSON.parse(devicesStr) : [];
   
@@ -208,6 +212,8 @@ export const updateDevice = async (id: number, name: string, machineTypeId: numb
     devices[index].name = name;
     devices[index].machine_type_id = machineTypeId;
     devices[index].serial_number = serialNumber;
+    if (image !== undefined) devices[index].image = image;
+    if (imageThumbnail !== undefined) devices[index].image_thumbnail = imageThumbnail;
     devices[index].updated_at = new Date().toISOString();
     await AsyncStorage.setItem(DEVICES_KEY, JSON.stringify(devices));
   }

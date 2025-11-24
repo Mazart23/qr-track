@@ -2,21 +2,25 @@
   "staging": [
     {
       "name": "John Doe",
-      "email": "john@example.com"
+      "email": "john@example.com",
+      "language": "en"
     },
     {
-      "name": "Jane Smith",
-      "email": "jane@example.com"
+      "name": "Jan Kowalski",
+      "email": "jan@example.com",
+      "language": "pl"
     }
   ],
   "production": [
     {
       "name": "Production User 1",
-      "email": "user1@example.com"
+      "email": "user1@example.com",
+      "language": "en"
     },
     {
       "name": "Production User 2",
-      "email": "user2@example.com"
+      "email": "user2@example.com",
+      "language": "pl"
     }
   ],
   "smtp": {

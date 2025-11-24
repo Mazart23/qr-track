@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Image } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -11,6 +11,7 @@ import { useMachineTypes } from '@/contexts/machine-types-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { getReportInterval } from '@/lib/settings';
+import { pickAndProcessImage } from '@/lib/image-helper';
 
 function NoQRIcon() {
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -66,6 +67,9 @@ export default function DeviceDetailsScreen() {
   const [editedMachineTypeId, setEditedMachineTypeId] = useState(Number(params.machine_type_id) || 0);
   const [machineTypeName, setMachineTypeName] = useState('');
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [editedImage, setEditedImage] = useState<string | undefined>(undefined);
+  const [editedImageThumbnail, setEditedImageThumbnail] = useState<string | undefined>(undefined);
+  const [showFullImage, setShowFullImage] = useState(false);
 
   useEffect(() => {
     if (device.machine_type_id) {
@@ -135,13 +139,22 @@ export default function DeviceDetailsScreen() {
       }
     }
 
-    await updateDevice(Number(id), editedName?.trim() || device.name, editedMachineTypeId || device.machine_type_id, editedSerialNumber?.trim() || device.serial_number);
+    await updateDevice(
+      Number(id), 
+      editedName?.trim() || device.name, 
+      editedMachineTypeId || device.machine_type_id, 
+      editedSerialNumber?.trim() || device.serial_number,
+      editedImage,
+      editedImageThumbnail
+    );
     
     const updatedDevice = {
       ...device,
       name: editedName?.trim() || device.name,
       serial_number: editedSerialNumber?.trim() || device.serial_number,
       machine_type_id: editedMachineTypeId || device.machine_type_id,
+      image: editedImage !== undefined ? editedImage : device.image,
+      image_thumbnail: editedImageThumbnail !== undefined ? editedImageThumbnail : device.image_thumbnail,
       updated_at: new Date().toISOString(),
     };
     setDevice(updatedDevice);
@@ -188,10 +201,72 @@ export default function DeviceDetailsScreen() {
     ]);
   };
 
+  const handlePickImage = async () => {
+    try {
+      const result = await pickAndProcessImage();
+      if (result) {
+        setEditedImage(result.image);
+        setEditedImageThumbnail(result.thumbnail);
+      }
+    } catch (error: any) {
+      Alert.alert(t('error'), error.message || t('invalidImageAspectRatio'));
+    }
+  };
+
+  const handleRemoveImage = () => {
+    Alert.alert(t('confirmDelete'), t('confirmRemoveImage'), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('delete'),
+        style: 'destructive',
+        onPress: () => {
+          setEditedImage('');
+          setEditedImageThumbnail('');
+        },
+      },
+    ]);
+  };
+
   const hasQR = device.qr_code && device.qr_code.trim() !== '';
+  const hasImage = device.image || editedImage;
+  const displayImage = editedImage !== undefined ? editedImage : device.image;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]} contentContainerStyle={styles.contentContainer}>
+      {hasImage && displayImage && (
+        <View style={[styles.imageSection, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+          <TouchableOpacity onPress={() => setShowFullImage(true)} activeOpacity={0.9}>
+            <Image source={{ uri: displayImage }} style={styles.deviceImage} resizeMode="contain" />
+          </TouchableOpacity>
+          {isEditing && (
+            <View style={styles.imageButtonRow}>
+              <TouchableOpacity 
+                style={[styles.smallButton, { backgroundColor: Colors[colorScheme].tint }]} 
+                onPress={handlePickImage}
+              >
+                <Text style={styles.smallButtonText}>{t('changeImage')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.smallButton, styles.deleteButton]} 
+                onPress={handleRemoveImage}
+              >
+                <Text style={styles.smallButtonText}>{t('removeImage')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+      
+      {!hasImage && isEditing && (
+        <TouchableOpacity 
+          style={[styles.addImageButton, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}
+          onPress={handlePickImage}
+        >
+          <MaterialIcons name="add-photo-alternate" size={48} color={Colors[colorScheme].icon} />
+          <Text style={[styles.addImageText, { color: Colors[colorScheme].text }]}>{t('addImage')}</Text>
+        </TouchableOpacity>
+      )}
+      
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('deviceName')}</Text>
         {isEditing ? (
@@ -352,6 +427,14 @@ export default function DeviceDetailsScreen() {
         </TouchableOpacity>
       </View>
 
+      <Modal visible={showFullImage} transparent animationType="fade" onRequestClose={() => setShowFullImage(false)}>
+        <View style={styles.fullImageOverlay}>
+          <TouchableOpacity style={styles.fullImageClose} onPress={() => setShowFullImage(false)} activeOpacity={1}>
+            <Image source={{ uri: displayImage }} style={styles.fullImage} resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
       <Modal visible={showTypePicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme].card }]}>
@@ -384,7 +467,6 @@ export default function DeviceDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 20,
   },
@@ -396,6 +478,37 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     overflow: 'hidden',
     borderRadius: 16,
+  },
+  imageSection: {
+    padding: 20,
+    borderRadius: 16,
+    elevation: 2,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  deviceImage: {
+    width: '100%',
+    height: 400,
+    borderRadius: 12,
+  },
+  imageButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  addImageButton: {
+    padding: 40,
+    borderRadius: 16,
+    elevation: 2,
+    borderWidth: 1,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addImageText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
   },
   section: {
     padding: 20,
@@ -520,5 +633,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  fullImageOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImageClose: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '100%',
+    height: '100%',
   },
 });

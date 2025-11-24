@@ -26,9 +26,9 @@ export default function TabLayout() {
         headerShown: true,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          height: 120,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 100,
+          paddingBottom: 4,
+          paddingTop: 4,
           backgroundColor: Colors.dark.card,
           borderTopColor: Colors.dark.border,
         },

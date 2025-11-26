@@ -1,4 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Modal, ScrollView } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import CountryFlag from 'react-native-country-flag';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -7,12 +9,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/theme-context';
 import { Colors } from '@/constants/theme';
 import { getReportInterval, setReportInterval } from '@/lib/settings';
+import { useNavigation } from '@/contexts/navigation-context';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const { theme: currentTheme, setTheme } = useTheme();
+  const { navigate, isNavigating } = useNavigation();
   const [reportInterval, setReportIntervalState] = useState(7);
   const [showIntervalPicker, setShowIntervalPicker] = useState(false);
 
@@ -45,7 +49,7 @@ export default function SettingsScreen() {
         style={[styles.button, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}
         onPress={() => setShowIntervalPicker(true)}
       >
-        <Text style={styles.flag}>📅</Text>
+        <MaterialIcons name="calendar-today" size={32} color={Colors[colorScheme].icon} />
         <Text style={[styles.buttonText, { color: Colors[colorScheme].text }]}>
           {reportInterval} {t(reportInterval === 1 ? 'day' : 'days')}
         </Text>
@@ -91,7 +95,9 @@ export default function SettingsScreen() {
           style={[styles.buttonHalf, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }, i18n.language === 'en' && styles.activeButton]}
           onPress={() => changeLanguage('en')}
         >
-          <Text style={styles.flag}>🇬🇧</Text>
+          <View style={styles.flagContainer}>
+            <CountryFlag isoCode="gb" size={32} />
+          </View>
           <Text style={[styles.buttonText, { color: Colors[colorScheme].text }, i18n.language === 'en' && styles.activeText]}>
             {t('english')}
           </Text>
@@ -100,7 +106,9 @@ export default function SettingsScreen() {
           style={[styles.buttonHalf, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }, i18n.language === 'pl' && styles.activeButton]}
           onPress={() => changeLanguage('pl')}
         >
-          <Text style={styles.flag}>🇵🇱</Text>
+          <View style={styles.flagContainer}>
+            <CountryFlag isoCode="pl" size={32} />
+          </View>
           <Text style={[styles.buttonText, { color: Colors[colorScheme].text }, i18n.language === 'pl' && styles.activeText]}>
             {t('polish')}
           </Text>
@@ -113,7 +121,7 @@ export default function SettingsScreen() {
           style={[styles.buttonHalf, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }, currentTheme === 'light' && styles.activeButton]}
           onPress={() => changeTheme('light')}
         >
-          <Text style={styles.flag}>☀️</Text>
+          <MaterialIcons name="wb-sunny" size={32} color={currentTheme === 'light' ? '#fff' : Colors[colorScheme].icon} />
           <Text style={[styles.buttonText, { color: Colors[colorScheme].text }, currentTheme === 'light' && styles.activeText]}>
             {t('lightMode')}
           </Text>
@@ -122,7 +130,7 @@ export default function SettingsScreen() {
           style={[styles.buttonHalf, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }, currentTheme === 'dark' && styles.activeButton]}
           onPress={() => changeTheme('dark')}
         >
-          <Text style={styles.flag}>🌙</Text>
+          <MaterialIcons name="nightlight-round" size={32} color={currentTheme === 'dark' ? '#fff' : Colors[colorScheme].icon} />
           <Text style={[styles.buttonText, { color: Colors[colorScheme].text }, currentTheme === 'dark' && styles.activeText]}>
             {t('darkMode')}
           </Text>
@@ -134,9 +142,10 @@ export default function SettingsScreen() {
           <Text style={[styles.label, { color: Colors[colorScheme].text, marginTop: 30 }]}>Developer</Text>
           <TouchableOpacity
             style={[styles.button, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}
-            onPress={() => router.push('/test-data')}
+            onPress={() => navigate(() => router.push('/test-data'))}
+            disabled={isNavigating}
           >
-            <Text style={styles.flag}>🧪</Text>
+            <MaterialIcons name="science" size={32} color={Colors[colorScheme].icon} />
             <Text style={[styles.buttonText, { color: Colors[colorScheme].text }]}>Test Data</Text>
           </TouchableOpacity>
         </>
@@ -185,9 +194,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 2,
   },
-  flag: {
-    fontSize: 32,
-  },
+
   activeButton: {
     backgroundColor: '#4338ca',
     borderColor: '#4338ca',
@@ -201,6 +208,15 @@ const styles = StyleSheet.create({
   activeText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  flagContainer: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   modalOverlay: {
     flex: 1,

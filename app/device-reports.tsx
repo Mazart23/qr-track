@@ -1,12 +1,10 @@
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { getReports } from '@/lib/database';
-import ScanButton from '@/components/scan-button';
+import { getDeviceReports } from '@/lib/database';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useNavigation } from '@/contexts/navigation-context';
@@ -41,8 +39,9 @@ function ReportItem({ item, colorScheme, navigate, router, isNavigating }: any) 
         }))}
         disabled={isNavigating}
       >
-        <Text style={[styles.itemDevice, { color: Colors[colorScheme].tint }]}>{item.device_name}</Text>
-        <Text style={[styles.itemDescription, { color: Colors[colorScheme].text }]}>{item.description}</Text>
+        <Text style={[styles.itemDescription, { color: Colors[colorScheme].text }]}>
+          {item.description}
+        </Text>
         <Text style={[styles.itemDate, { color: Colors[colorScheme].icon }]}>
           {new Date(item.created_at).toLocaleString()}
         </Text>
@@ -65,36 +64,36 @@ function ReportItem({ item, colorScheme, navigate, router, isNavigating }: any) 
   );
 }
 
-export default function ReportsScreen() {
+export default function DeviceReportsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const router = useRouter();
   const { navigate, isNavigating } = useNavigation();
+  const params = useLocalSearchParams();
+  const { deviceId } = params;
   const [reports, setReports] = useState<any[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    loadReports();
+  }, [deviceId]);
 
   const loadReports = async () => {
-    const data = await getReports();
+    const data = await getDeviceReports(Number(deviceId));
     setReports(data);
   };
-
-  useFocusEffect(() => {
-    loadReports();
-    setRefreshKey(prev => prev + 1);
-  });
 
   return (
     <View style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}>
       <FlatList
         data={reports}
         keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <ReportItem 
-            key={`${item.id}-${refreshKey}`}
-            item={item} 
-            colorScheme={colorScheme} 
-            navigate={navigate} 
-            router={router} 
+          <ReportItem
+            item={item}
+            colorScheme={colorScheme}
+            navigate={navigate}
+            router={router}
             isNavigating={isNavigating}
           />
         )}
@@ -102,7 +101,6 @@ export default function ReportsScreen() {
           <Text style={[styles.empty, { color: Colors[colorScheme].icon }]}>{t('noReportsYet')}</Text>
         }
       />
-      <ScanButton />
     </View>
   );
 }
@@ -110,8 +108,10 @@ export default function ReportsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+  },
+  listContent: {
+    padding: 24,
+    paddingBottom: 40,
   },
   itemWrapper: {
     position: 'relative',
@@ -144,11 +144,6 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: 16,
     pointerEvents: 'none',
-  },
-  itemDevice: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
   },
   itemDescription: {
     fontSize: 16,

@@ -2,14 +2,16 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, Text, AppState } from 'react-native';
+import { View, StyleSheet, Image, Text, AppState, Linking, Alert } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as Updates from 'expo-updates';
 import 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import Constants from 'expo-constants';
 
 import { ThemeProvider } from '@/contexts/theme-context';
 import { MachineTypesProvider } from '@/contexts/machine-types-context';
+import { NavigationProvider } from '@/contexts/navigation-context';
 import { initDatabase } from '@/lib/database';
 import { loadLanguage } from '@/lib/i18n';
 import '@/lib/i18n';
@@ -27,6 +29,54 @@ export default function RootLayout() {
       await initDatabase();
       await loadLanguage();
       await NavigationBar.setVisibilityAsync('hidden');
+      
+      try {
+        const response = await fetch('https://raw.githubusercontent.com/Mazart23/qr-track/main/build-info.json');
+        
+        if (!response.ok) {
+          throw new Error('Build info not found');
+        }
+        
+        const buildInfo = await response.json();
+        
+        const currentRuntime = Constants.expoConfig?.runtimeVersion;
+        const serverRuntime = buildInfo.runtimeVersion;
+        
+        const currentHash = currentRuntime?.substring(currentRuntime.indexOf('-') + 1);
+        const serverHash = serverRuntime?.substring(serverRuntime.indexOf('-') + 1);
+        
+        if (serverHash && currentHash && serverHash !== currentHash && buildInfo.downloadUrl) {
+          Alert.alert(
+            t('newVersionAvailable'),
+            t('newVersionMessage', { version: buildInfo.version }),
+            [
+              { text: t('later'), style: 'cancel' },
+              { 
+                text: t('download'), 
+                onPress: () => Linking.openURL(buildInfo.downloadUrl)
+              }
+            ]
+          );
+        } else {
+          const update = await Updates.checkForUpdateAsync();
+          if (update.isAvailable) {
+            await Updates.fetchUpdateAsync();
+            await Updates.reloadAsync();
+          }
+        }
+      } catch (e) {
+        console.log('Update check failed:', e);
+        try {
+          const update = await Updates.checkForUpdateAsync();
+          if (update.isAvailable) {
+            await Updates.fetchUpdateAsync();
+            await Updates.reloadAsync();
+          }
+        } catch (updateError) {
+          console.log('OTA update check failed:', updateError);
+        }
+      }
+      
       setIsReady(true);
     };
     prepare();
@@ -51,9 +101,10 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      {({ theme }) => (
-        <MachineTypesProvider>
+    <NavigationProvider>
+      <ThemeProvider>
+        {({ theme }) => (
+          <MachineTypesProvider>
           <NavigationThemeProvider value={theme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack screenOptions={{ 
               animation: 'slide_from_right',
@@ -65,12 +116,14 @@ export default function RootLayout() {
               <Stack.Screen name="report-details" options={{ title: t('reportDetails') }} />
               <Stack.Screen name="machine-types" options={{ title: t('machineTypes') }} />
               <Stack.Screen name="scan-qr-edit" options={{ presentation: 'modal', title: t('scanQRCode') }} />
+              <Stack.Screen name="device-reports" options={{ presentation: 'modal', animation: 'slide_from_bottom', title: t('allReports') }} />
             </Stack>
             <StatusBar style="auto" />
           </NavigationThemeProvider>
-        </MachineTypesProvider>
-      )}
-    </ThemeProvider>
+          </MachineTypesProvider>
+        )}
+      </ThemeProvider>
+    </NavigationProvider>
   );
 }
 

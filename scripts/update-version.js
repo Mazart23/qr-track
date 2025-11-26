@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const version = process.argv[2];
 
@@ -29,9 +30,16 @@ appJson.expo.ios.buildNumber = version;
 // Increment Android versionCode
 appJson.expo.android.versionCode = (appJson.expo.android.versionCode || 1) + 1;
 
+// Generate runtimeVersion with package-lock.json hash
+const packageLockPath = path.join(__dirname, '..', 'package-lock.json');
+const packageLockContent = fs.readFileSync(packageLockPath, 'utf8');
+const packageLockHash = crypto.createHash('md5').update(packageLockContent).digest('hex').substring(0, 8);
+appJson.expo.runtimeVersion = `${version}-${packageLockHash}`;
+
 // Write back to file
 fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2) + '\n');
 
 console.log(`✅ Version updated to ${version}`);
 console.log(`   iOS buildNumber: ${version}`);
 console.log(`   Android versionCode: ${appJson.expo.android.versionCode}`);
+console.log(`   runtimeVersion: ${appJson.expo.runtimeVersion}`);

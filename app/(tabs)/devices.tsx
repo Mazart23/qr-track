@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
 import { getDevices, getLastReport } from '@/lib/database';
 import { useMachineTypes } from '@/contexts/machine-types-context';
+import { useNavigation } from '@/contexts/navigation-context';
 import ScanButton from '@/components/scan-button';
 import AnimatedStatusIcon from '@/components/animated-status-icon';
 
@@ -56,6 +57,7 @@ export default function DevicesScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const { getMachineTypeById } = useMachineTypes();
+  const { navigate, isNavigating } = useNavigation();
   const [devices, setDevices] = useState<any[]>([]);
 
   const loadDevices = async () => {
@@ -70,9 +72,12 @@ export default function DevicesScreen() {
         if (lastReport) {
           const lastReportDate = new Date(lastReport.created_at);
           const now = new Date();
+          
+          const isSameDay = lastReportDate.toDateString() === now.toDateString();
+          
           const daysDiff = Math.floor((now.getTime() - lastReportDate.getTime()) / (1000 * 60 * 60 * 24));
           
-          if (daysDiff === 0) {
+          if (isSameDay) {
             status = 'today';
           } else if (daysDiff > interval) {
             status = 'overdue';
@@ -99,9 +104,13 @@ export default function DevicesScreen() {
     <View style={[styles.container, { backgroundColor: Colors[colorScheme].background }]}>
       <TouchableOpacity 
         style={[styles.configButton, { backgroundColor: Colors[colorScheme].tint }]}
-        onPress={() => router.push('/machine-types')}
+        onPress={() => navigate(() => router.push('/machine-types'))}
+        disabled={isNavigating}
       >
-        <Text style={styles.configButtonText}>⚙️ {t('machineTypes')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <MaterialIcons name="settings" size={20} color="#fff" />
+          <Text style={styles.configButtonText}>{t('machineTypes')}</Text>
+        </View>
       </TouchableOpacity>
       <FlatList
         data={devices}
@@ -110,14 +119,15 @@ export default function DevicesScreen() {
           <TouchableOpacity 
             style={[styles.item, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}
             activeOpacity={0.7}
-            onPress={() => router.push({
+            onPress={() => navigate(() => router.push({
               pathname: '/device-details',
               params: {
                 ...item,
                 machine_type_id: item.machine_type_id,
                 serial_number: item.serial_number,
               },
-            })}
+            }))}
+            disabled={isNavigating}
           >
             {!item.hasQR && (
               <LinearGradient
@@ -216,7 +226,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

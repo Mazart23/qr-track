@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { execSync } = require('child_process');
 
@@ -105,6 +106,30 @@ const translations = {
   }
 };
 
+function updateBuildInfoFile(buildInfo) {
+  console.log('\nUpdating build-info.json...');
+  const appJsonPath = path.join(__dirname, '..', 'app.json');
+  const packageLockPath = path.join(__dirname, '..', 'package-lock.json');
+  const buildInfoPath = path.join(__dirname, '..', 'build-info.json');
+  
+  const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+  const packageLockContent = fs.readFileSync(packageLockPath, 'utf8');
+  const packageLockHash = crypto.createHash('md5').update(packageLockContent).digest('hex').substring(0, 8);
+  
+  const buildInfoData = {
+    version: buildInfo.version,
+    versionCode: appJson.expo.android.versionCode,
+    runtimeVersion: appJson.expo.runtimeVersion,
+    packageLockHash: packageLockHash,
+    buildDate: new Date().toISOString(),
+    downloadUrl: buildInfo.url
+  };
+  
+  fs.writeFileSync(buildInfoPath, JSON.stringify(buildInfoData, null, 2));
+  console.log('✅ build-info.json updated');
+  console.log(JSON.stringify(buildInfoData, null, 2));
+}
+
 // Send email with download link
 async function sendEmail(subscriber, buildInfo) {
   const transporter = nodemailer.createTransport(smtpConfig);
@@ -165,6 +190,8 @@ async function distribute() {
     const buildInfo = await getLatestBuildUrl();
     console.log(`Build version: ${buildInfo.version} (${buildInfo.buildNumber})`);
     console.log(`Download URL: ${buildInfo.url}`);
+    
+    updateBuildInfoFile(buildInfo);
     
     // Send to all subscribers
     console.log(`\nSending download link to ${subscribers.length} subscribers...`);

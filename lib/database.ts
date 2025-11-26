@@ -188,6 +188,31 @@ export const getReports = async () => {
 };
 
 /**
+ * Get reports for specific device
+ */
+export const getDeviceReports = async (deviceId: number) => {
+  const reportsStr = await AsyncStorage.getItem(REPORTS_KEY);
+  const devicesStr = await AsyncStorage.getItem(DEVICES_KEY);
+  
+  const reports: Report[] = reportsStr ? JSON.parse(reportsStr) : [];
+  const devices: Device[] = devicesStr ? JSON.parse(devicesStr) : [];
+  
+  return reports
+    .filter(r => r.device_id === deviceId)
+    .map(r => {
+      const device = devices.find(d => d.id === r.device_id);
+      return {
+        id: r.id,
+        device_name: device?.name || 'Unknown',
+        description: r.description,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      };
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+};
+
+/**
  * Get last report for device
  */
 export const getLastReport = async (deviceId: number) => {

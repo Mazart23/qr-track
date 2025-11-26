@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Alert, Platform, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Alert, Platform, Modal, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import QRCode from 'qrcode-generator';
@@ -14,21 +14,24 @@ export default function QRsScreen() {
   const [qrCodes, setQrCodes] = useState<string[]>([]);
   const [showCountPicker, setShowCountPicker] = useState(false);
   const [showSizePicker, setShowSizePicker] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   /**
    * Generate QR codes based on count
    */
   const generateQRs = async () => {
+    if (isGenerating) return;
+    if (!count) {
+      Alert.alert(t('error'), t('selectCount'));
+      return;
+    }
+    if (!size) {
+      Alert.alert(t('error'), t('selectSize'));
+      return;
+    }
+    setIsGenerating(true);
     const num = parseInt(count);
-    const qrSize = parseInt(size);
-    if (isNaN(num) || num < 1 || num > 50) {
-      Alert.alert(t('error'), t('enterCountBetween'));
-      return;
-    }
-    if (isNaN(qrSize) || qrSize < 20 || qrSize > 100) {
-      Alert.alert(t('error'), t('enterSizeBetween'));
-      return;
-    }
+    const qrSize = parseInt(size)
 
     const codes: string[] = [];
     for (let i = 0; i < num; i++) {
@@ -37,6 +40,7 @@ export default function QRsScreen() {
     }
     setQrCodes(codes);
     await generateFile(codes, qrSize);
+    setIsGenerating(false);
   };
 
   /**
@@ -184,8 +188,16 @@ export default function QRsScreen() {
       </View>
       {renderPicker(showCountPicker, () => setShowCountPicker(false), countOptions, setCount, t('count'), count)}
       {renderPicker(showSizePicker, () => setShowSizePicker(false), sizeOptions, setSize, t('size'), size)}
-      <TouchableOpacity style={[styles.button, { backgroundColor: Colors[colorScheme].tint }]} onPress={generateQRs}>
-        <Text style={styles.buttonText}>{t('generate')}</Text>
+      <TouchableOpacity 
+        style={[styles.button, { backgroundColor: Colors[colorScheme].tint, opacity: isGenerating ? 0.6 : 1 }]} 
+        onPress={generateQRs}
+        disabled={isGenerating}
+      >
+        {isGenerating ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.buttonText}>{t('generate')}</Text>
+        )}
       </TouchableOpacity>
 
       <ScrollView style={styles.qrContainer}>

@@ -6,46 +6,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Animated } from 'react-native';
 import AnimatedStatusIcon from '@/components/animated-status-icon';
-import { getLastReport, updateDevice, deleteDevice, getDeviceReportsCount, checkDeviceNameExists, checkSerialNumberExists, updateDeviceQRCode, getDeviceById } from '@/lib/database';
+import { getLastReport, updateDevice, deleteDevice, getDeviceReportsCount, checkDeviceNameExists, checkSerialNumberExists, updateDeviceQRCode, getDeviceById, getDeviceReports } from '@/lib/database';
 import { useMachineTypes } from '@/contexts/machine-types-context';
+import { useNavigation } from '@/contexts/navigation-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { getReportInterval } from '@/lib/settings';
 import { pickAndProcessImage } from '@/lib/image-helper';
-
-function NoQRIcon() {
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const rotate = Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
-        Animated.timing(rotateAnim, { toValue: -1, duration: 100, useNativeDriver: true }),
-        Animated.timing(rotateAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-        Animated.timing(rotateAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-        Animated.delay(700),
-      ])
-    );
-    rotate.start();
-    return () => rotate.stop();
-  }, [rotateAnim]);
-
-  const rotation = rotateAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ['-15deg', '15deg'],
-  });
-
-  return (
-    <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-      <MaterialIcons name="qr-code" size={40} color="#ef4444" />
-    </Animated.View>
-  );
-}
+import ImageSection from '@/components/device-details/ImageSection';
+import QRCodeSection from '@/components/device-details/QRCodeSection';
+import LastReportSection from '@/components/device-details/LastReportSection';
+import ReportsSection from '@/components/device-details/ReportsSection';
 
 export default function DeviceDetailsScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const { navigate, isNavigating } = useNavigation();
   const { machineTypes, getMachineTypeById } = useMachineTypes();
   const params = useLocalSearchParams();
   const { id } = params;
@@ -69,7 +46,6 @@ export default function DeviceDetailsScreen() {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [editedImage, setEditedImage] = useState<string | undefined>(undefined);
   const [editedImageThumbnail, setEditedImageThumbnail] = useState<string | undefined>(undefined);
-  const [showFullImage, setShowFullImage] = useState(false);
 
   useEffect(() => {
     if (device.machine_type_id) {
@@ -101,9 +77,12 @@ export default function DeviceDetailsScreen() {
       if (report) {
         const lastReportDate = new Date(report.created_at);
         const now = new Date();
+        
+        const isSameDay = lastReportDate.toDateString() === now.toDateString();
+        
         const daysDiff = Math.floor((now.getTime() - lastReportDate.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (daysDiff === 0) {
+        if (isSameDay) {
           status = 'today';
         } else if (daysDiff > interval) {
           status = 'overdue';
@@ -233,39 +212,14 @@ export default function DeviceDetailsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: Colors[colorScheme].background }]} contentContainerStyle={styles.contentContainer}>
-      {hasImage && displayImage && (
-        <View style={[styles.imageSection, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <TouchableOpacity onPress={() => setShowFullImage(true)} activeOpacity={0.9}>
-            <Image source={{ uri: displayImage }} style={styles.deviceImage} resizeMode="contain" />
-          </TouchableOpacity>
-          {isEditing && (
-            <View style={styles.imageButtonRow}>
-              <TouchableOpacity 
-                style={[styles.smallButton, { backgroundColor: Colors[colorScheme].tint }]} 
-                onPress={handlePickImage}
-              >
-                <Text style={styles.smallButtonText}>{t('changeImage')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.smallButton, styles.deleteButton]} 
-                onPress={handleRemoveImage}
-              >
-                <Text style={styles.smallButtonText}>{t('removeImage')}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-      
-      {!hasImage && isEditing && (
-        <TouchableOpacity 
-          style={[styles.addImageButton, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}
-          onPress={handlePickImage}
-        >
-          <MaterialIcons name="add-photo-alternate" size={48} color={Colors[colorScheme].icon} />
-          <Text style={[styles.addImageText, { color: Colors[colorScheme].text }]}>{t('addImage')}</Text>
-        </TouchableOpacity>
-      )}
+      <ImageSection 
+        displayImage={displayImage}
+        isEditing={isEditing}
+        colorScheme={colorScheme}
+        onPickImage={handlePickImage}
+        onRemoveImage={handleRemoveImage}
+        sharedStyles={styles}
+      />
       
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('deviceName')}</Text>
@@ -280,44 +234,14 @@ export default function DeviceDetailsScreen() {
         )}
       </View>
       
-      <View style={styles.sectionWrapper}>
-        <View style={[styles.sectionWithGradient, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('qrCode')}</Text>
-          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{device.qr_code || t('noQRCode')}</Text>
-          {isEditing && (
-            <View style={styles.qrButtonRow}>
-              <TouchableOpacity 
-                style={[styles.smallButton, { backgroundColor: Colors[colorScheme].tint }]} 
-                onPress={() => router.push({ pathname: '/scan-qr-edit', params: { deviceId: id } })}
-              >
-                <Text style={styles.smallButtonText}>{hasQR ? t('change') : t('add')}</Text>
-              </TouchableOpacity>
-              {hasQR && (
-                <TouchableOpacity 
-                  style={[styles.smallButton, styles.deleteButton]} 
-                  onPress={handleRemoveQR}
-                >
-                  <Text style={styles.smallButtonText}>{t('removeQRCode')}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-          {!hasQR && (
-            <View style={styles.iconWrapper}>
-              <NoQRIcon />
-            </View>
-          )}
-        </View>
-        {!hasQR && (
-          <LinearGradient
-            colors={['transparent', 'rgba(239, 68, 68, 0.15)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            locations={[0.3, 1]}
-            style={styles.gradient}
-          />
-        )}
-      </View>
+      <QRCodeSection
+        qrCode={device.qr_code}
+        isEditing={isEditing}
+        colorScheme={colorScheme}
+        onChangeQR={() => navigate(() => router.push({ pathname: '/scan-qr-edit', params: { deviceId: id } }))}
+        onRemoveQR={handleRemoveQR}
+        sharedStyles={styles}
+      />
       
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('serialNumber')}</Text>
@@ -348,69 +272,50 @@ export default function DeviceDetailsScreen() {
         )}
       </View>
       
-      <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-        <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('createdAt')}</Text>
-        <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-          {device.created_at ? new Date(device.created_at).toLocaleString() : '-'}
-        </Text>
-      </View>
-      
-      {device.updated_at && device.updated_at !== device.created_at && (
-        <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('updatedAt')}</Text>
-          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-            {new Date(device.updated_at).toLocaleString()}
-          </Text>
-        </View>
+      {!isEditing && (
+        <>
+          <LastReportSection
+            lastReportDate={lastReportDate}
+            reportStatus={reportStatus}
+            colorScheme={colorScheme}
+            sharedStyles={styles}
+          />
+          
+          <ReportsSection
+            deviceId={Number(id)}
+            colorScheme={colorScheme}
+            sharedStyles={styles}
+            getDeviceReports={getDeviceReports}
+          />
+        </>
       )}
-      
-      <View style={styles.sectionWrapper}>
-        <View style={[styles.sectionWithGradient, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-          <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('lastReport')}</Text>
-          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-            {lastReportDate ? new Date(lastReportDate).toLocaleString() : t('noReportsYetForDevice')}
-          </Text>
-          {reportStatus !== 'none' && (
-            <View style={styles.iconWrapper}>
-              <AnimatedStatusIcon status={reportStatus} size={40} />
+      <QRCodeSection
+        qrCode={device.qr_code}
+        isEditing={isEditing}
+        colorScheme={colorScheme}
+        onChangeQR={() => navigate(() => router.push({ pathname: '/scan-qr-edit', params: { deviceId: id } }))}
+        onRemoveQR={handleRemoveQR}
+        sharedStyles={styles}
+      />
+      {!isEditing && (
+        <>
+          <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+            <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('createdAt')}</Text>
+            <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
+              {device.created_at ? new Date(device.created_at).toLocaleString() : '-'}
+            </Text>
+          </View>
+          
+          {device.updated_at && device.updated_at !== device.created_at && (
+            <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
+              <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('updatedAt')}</Text>
+              <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
+                {new Date(device.updated_at).toLocaleString()}
+              </Text>
             </View>
           )}
-        </View>
-        {reportStatus === 'today' && (
-          <LinearGradient
-            colors={['transparent', 'rgba(34, 197, 94, 0.15)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            locations={[0.3, 1]}
-            style={styles.gradient}
-          />
-        )}
-        {reportStatus === 'overdue' && (
-          <LinearGradient
-            colors={['transparent', 'rgba(249, 115, 22, 0.15)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            locations={[0.3, 1]}
-            style={styles.gradient}
-          />
-        )}
-        {reportStatus === 'no-report' && (
-          <LinearGradient
-            colors={['transparent', 'rgba(234, 179, 8, 0.15)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            locations={[0.3, 1]}
-            style={styles.gradient}
-          />
-        )}
-      </View>
-      
-      <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
-        <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('location')}</Text>
-        <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-          {device.latitude && device.longitude ? `${device.latitude}, ${device.longitude}` : t('noLocation')}
-        </Text>
-      </View>
+        </>
+      )}
 
       <View style={styles.buttonRow}>
         {isEditing ? (
@@ -426,14 +331,6 @@ export default function DeviceDetailsScreen() {
           <Text style={styles.buttonText}>{t('delete')}</Text>
         </TouchableOpacity>
       </View>
-
-      <Modal visible={showFullImage} transparent animationType="fade" onRequestClose={() => setShowFullImage(false)}>
-        <View style={styles.fullImageOverlay}>
-          <TouchableOpacity style={styles.fullImageClose} onPress={() => setShowFullImage(false)} activeOpacity={1}>
-            <Image source={{ uri: displayImage }} style={styles.fullImage} resizeMode="contain" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
 
       <Modal visible={showTypePicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -473,75 +370,18 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingBottom: 50,
   },
-  sectionWrapper: {
-    position: 'relative',
-    marginBottom: 20,
-    overflow: 'hidden',
-    borderRadius: 16,
-  },
-  imageSection: {
-    padding: 20,
-    borderRadius: 16,
-    elevation: 2,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  deviceImage: {
-    width: '100%',
-    height: 400,
-    borderRadius: 12,
-  },
-  imageButtonRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  addImageButton: {
-    padding: 40,
-    borderRadius: 16,
-    elevation: 2,
-    borderWidth: 1,
-    marginBottom: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
-  },
   section: {
     padding: 20,
     borderRadius: 16,
     elevation: 2,
     borderWidth: 1,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  sectionWithGradient: {
-    padding: 20,
-    borderRadius: 16,
-    elevation: 2,
-    borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  iconWrapper: {
-    position: 'absolute',
-    right: 20,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gradient: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 16,
-    pointerEvents: 'none',
-  },
+
   label: {
     fontSize: 14,
     marginBottom: 8,
@@ -580,23 +420,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  qrButtonRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  smallButton: {
-    flex: 1,
-    maxWidth: '50%',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  smallButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -633,21 +457,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  fullImageOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImageClose: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullImage: {
-    width: '100%',
-    height: '100%',
   },
 });

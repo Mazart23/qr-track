@@ -2,7 +2,7 @@
   "expo": {
     "name": "QR Track",
     "slug": "qr-track",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "description": "QR code tracking application for machines and reports",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -11,7 +11,7 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.qrtrack.app",
-      "buildNumber": "1.1.1",
+      "buildNumber": "1.2.0",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to scan QR codes",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.qrtrack.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/logo.png"
@@ -65,7 +65,7 @@
         "projectId": "66f9c99a-0603-44ba-ac69-edf01f21e856"
       }
     },
-    "runtimeVersion": "1.1.1-725cd0b8",
+    "runtimeVersion": "1.2.0-725cd0b8",
     "updates": {
       "url": "https://u.expo.dev/66f9c99a-0603-44ba-ac69-edf01f21e856"
     }

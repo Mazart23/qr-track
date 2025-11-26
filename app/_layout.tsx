@@ -34,7 +34,7 @@ export default function RootLayout() {
         const response = await fetch('https://raw.githubusercontent.com/Mazart23/qr-track/main/build-info.json');
         
         if (!response.ok) {
-          throw new Error('Build info not found');
+          throw new Error('failed: Build info not found');
         }
         
         const buildInfo = await response.json();
@@ -58,14 +58,10 @@ export default function RootLayout() {
             ]
           );
         } else {
-          const update = await Updates.checkForUpdateAsync();
-          if (update.isAvailable) {
-            await Updates.fetchUpdateAsync();
-            await Updates.reloadAsync();
-          }
+          throw new Error('stopped: Runtime versions compatible');
         }
       } catch (e) {
-        console.log('Update check failed:', e);
+        console.log('Update check ', e.message);
         try {
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {

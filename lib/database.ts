@@ -178,6 +178,7 @@ export const getReports = async () => {
       const device = devices.find(d => d.id === r.device_id);
       return {
         id: r.id,
+        device_id: r.device_id,
         device_name: device?.name || 'Unknown',
         description: r.description,
         created_at: r.created_at,

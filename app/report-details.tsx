@@ -11,9 +11,10 @@ export default function ReportDetailsScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { id, device_name, description, created_at, updated_at } = params;
+  const { id, device_name, description, created_at } = params;
   const [isEditing, setIsEditing] = useState(false);
   const [editedDescription, setEditedDescription] = useState(description as string);
+  const [updatedAt, setUpdatedAt] = useState(params.updated_at as string | undefined);
 
   const handleSave = async () => {
     if (!editedDescription.trim()) {
@@ -21,6 +22,7 @@ export default function ReportDetailsScreen() {
       return;
     }
     await updateReport(Number(id), editedDescription);
+    setUpdatedAt(new Date().toISOString());
     Alert.alert(t('success'), t('reportUpdated'));
     setIsEditing(false);
   };
@@ -69,11 +71,11 @@ export default function ReportDetailsScreen() {
         </Text>
       </View>
       
-      {updated_at && updated_at !== created_at && (
+      {!isEditing && updatedAt && updatedAt !== created_at && (
         <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
           <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('updatedAt')}</Text>
           <Text style={[styles.value, { color: Colors[colorScheme].text }]}>
-            {new Date(updated_at as string).toLocaleString()}
+            {new Date(updatedAt).toLocaleString()}
           </Text>
         </View>
       )}

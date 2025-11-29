@@ -14,16 +14,20 @@ interface MachineTypesContextType {
   machineTypes: MachineType[];
   refreshMachineTypes: () => Promise<void>;
   getMachineTypeById: (id: number) => MachineType | undefined;
+  isLoading: boolean;
 }
 
 const MachineTypesContext = createContext<MachineTypesContextType | undefined>(undefined);
 
 export function MachineTypesProvider({ children }: { children: ReactNode }) {
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshMachineTypes = async () => {
+    setIsLoading(true);
     const types = await getMachineTypes();
     setMachineTypes(types);
+    setIsLoading(false);
   };
 
   const getMachineTypeByIdLocal = (id: number) => {
@@ -35,7 +39,7 @@ export function MachineTypesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MachineTypesContext.Provider value={{ machineTypes, refreshMachineTypes, getMachineTypeById: getMachineTypeByIdLocal }}>
+    <MachineTypesContext.Provider value={{ machineTypes, refreshMachineTypes, getMachineTypeById: getMachineTypeByIdLocal, isLoading }}>
       {children}
     </MachineTypesContext.Provider>
   );

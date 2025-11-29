@@ -195,9 +195,16 @@ export default function ScanScreen() {
                       setShowTypePicker(false);
                     }}
                   >
-                    <Text style={[styles.pickerItemText, type.id === machineTypeId && { color: '#fff', fontWeight: '700' }]}>
-                      {type.name}
-                    </Text>
+                    <View style={styles.pickerItemContent}>
+                      {type.color && type.icon && (
+                        <View style={[styles.typePreview, { backgroundColor: type.color }]}>
+                          <MaterialIcons name={type.icon as any} size={20} color="#fff" />
+                        </View>
+                      )}
+                      <Text style={[styles.pickerItemText, type.id === machineTypeId && { color: '#fff', fontWeight: '700' }]}>
+                        {type.name}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -409,9 +416,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f3f5',
   },
+  pickerItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  typePreview: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   pickerItemText: {
     fontSize: 18,
-    textAlign: 'center',
     color: '#212529',
   },
   modalCloseButton: {

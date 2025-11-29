@@ -234,15 +234,6 @@ export default function DeviceDetailsScreen() {
         )}
       </View>
       
-      <QRCodeSection
-        qrCode={device.qr_code}
-        isEditing={isEditing}
-        colorScheme={colorScheme}
-        onChangeQR={() => navigate(() => router.push({ pathname: '/scan-qr-edit', params: { deviceId: id } }))}
-        onRemoveQR={handleRemoveQR}
-        sharedStyles={styles}
-      />
-      
       <View style={[styles.section, { backgroundColor: Colors[colorScheme].card, borderColor: Colors[colorScheme].border }]}>
         <Text style={[styles.label, { color: Colors[colorScheme].icon }]}>{t('serialNumber')}</Text>
         {isEditing ? (
@@ -268,7 +259,17 @@ export default function DeviceDetailsScreen() {
             </Text>
           </TouchableOpacity>
         ) : (
-          <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{machineTypeName || '-'}</Text>
+          <View style={styles.machineTypeRow}>
+            {(() => {
+              const type = getMachineTypeById(device.machine_type_id);
+              return type?.color && type?.icon ? (
+                <View style={[styles.typePreview, { backgroundColor: type.color }]}>
+                  <MaterialIcons name={type.icon as any} size={20} color="#fff" />
+                </View>
+              ) : null;
+            })()}
+            <Text style={[styles.value, { color: Colors[colorScheme].text }]}>{machineTypeName || '-'}</Text>
+          </View>
         )}
       </View>
       
@@ -346,9 +347,16 @@ export default function DeviceDetailsScreen() {
                     setShowTypePicker(false);
                   }}
                 >
-                  <Text style={[styles.pickerItemText, { color: Colors[colorScheme].icon }, type.id === editedMachineTypeId && { color: '#fff', fontWeight: '700' }]}>
-                    {type.name}
-                  </Text>
+                  <View style={styles.pickerItemContent}>
+                    {type.color && type.icon && (
+                      <View style={[styles.typePreview, { backgroundColor: type.color }]}>
+                        <MaterialIcons name={type.icon as any} size={20} color="#fff" />
+                      </View>
+                    )}
+                    <Text style={[styles.pickerItemText, { color: Colors[colorScheme].icon }, type.id === editedMachineTypeId && { color: '#fff', fontWeight: '700' }]}>
+                      {type.name}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -392,6 +400,11 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 20,
     fontWeight: '600',
+  },
+  machineTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   input: {
     fontSize: 20,
@@ -445,9 +458,21 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
   },
+  pickerItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  typePreview: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   pickerItemText: {
     fontSize: 18,
-    textAlign: 'center',
   },
   modalCloseButton: {
     padding: 20,

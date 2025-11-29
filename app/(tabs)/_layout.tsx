@@ -1,9 +1,9 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { HapticTab } from '@/components/haptic-tab';
+import { AnimatedTabBar } from '@/components/animated-tab-bar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -18,13 +18,15 @@ const tabs = [
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { t } = useTranslation();
+  const router = useRouter();
 
   return (
     <Tabs
+      tabBar={(props) => <AnimatedTabBar {...props} />}
       screenOptions={{
         tabBarActiveTintColor: Colors.dark.text,
         headerShown: true,
-        tabBarButton: HapticTab,
+
         tabBarStyle: {
           height: 100,
           paddingBottom: 4,
@@ -67,6 +69,21 @@ export default function TabLayout() {
                 </Text>
               </View>
             ),
+            headerRight: tab.name === 'devices' ? () => (
+              <TouchableOpacity
+                onPress={() => router.push('/machines-config')}
+                style={{ marginRight: 16 }}
+              >
+                <IconSymbol size={32} name="gearshape.fill" color={Colors.dark.text} />
+              </TouchableOpacity>
+            ) : tab.name === 'reports' ? () => (
+              <TouchableOpacity
+                onPress={() => router.push('/reports-config')}
+                style={{ marginRight: 16 }}
+              >
+                <IconSymbol size={32} name="gearshape.fill" color={Colors.dark.text} />
+              </TouchableOpacity>
+            ) : undefined,
             tabBarIcon: ({ color }) => <IconSymbol size={42} name={tab.icon} color={color} />,
           }}
         />

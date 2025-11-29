@@ -12,7 +12,7 @@ import Constants from 'expo-constants';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { MachineTypesProvider } from '@/contexts/machine-types-context';
 import { NavigationProvider } from '@/contexts/navigation-context';
-import { initDatabase } from '@/lib/database';
+import { initDatabase, getMachineTypes } from '@/lib/database';
 import { loadLanguage } from '@/lib/i18n';
 import '@/lib/i18n';
 
@@ -21,6 +21,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const { t } = useTranslation();
 
@@ -28,8 +29,15 @@ export default function RootLayout() {
     const prepare = async () => {
       await initDatabase();
       await loadLanguage();
+      await getMachineTypes();
       await NavigationBar.setVisibilityAsync('hidden');
-      
+      setIsInitialized(true);
+    };
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    const checkUpdate = async () => {
       try {
         const response = await fetch('https://raw.githubusercontent.com/Mazart23/qr-track/main/build-info.json');
         
@@ -75,8 +83,11 @@ export default function RootLayout() {
       
       setIsReady(true);
     };
-    prepare();
-  }, []);
+    if (isInitialized) {
+      checkUpdate();
+      setIsReady(true);
+    }
+  }, [isInitialized]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
@@ -111,6 +122,12 @@ export default function RootLayout() {
               <Stack.Screen name="device-details" options={{ title: t('machineDetails') }} />
               <Stack.Screen name="report-details" options={{ title: t('reportDetails') }} />
               <Stack.Screen name="machine-types" options={{ title: t('machineTypes') }} />
+              <Stack.Screen name="machines-config" options={{ title: t('machinesConfig') }} />
+              <Stack.Screen name="machines-filters-config" options={{ title: t('machinesFilters') }} />
+              <Stack.Screen name="machines-sorting-config" options={{ title: t('machinesSorting') }} />
+              <Stack.Screen name="reports-config" options={{ title: t('reportsConfig') }} />
+              <Stack.Screen name="reports-filters-config" options={{ title: t('reportsFilters') }} />
+              <Stack.Screen name="reports-sorting-config" options={{ title: t('reportsSorting') }} />
               <Stack.Screen name="scan-qr-edit" options={{ presentation: 'modal', title: t('scanQRCode') }} />
               <Stack.Screen name="device-reports" options={{ presentation: 'modal', animation: 'slide_from_bottom', title: t('allReports') }} />
             </Stack>
